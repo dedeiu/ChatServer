@@ -49,8 +49,7 @@ namespace CS
             this->stopServer = false;
         }
         
-        std::thread t(&ChatServer::runServer, this);
-        t.join();
+        this->runServer();
     }
     
     void ChatServer::Init()
@@ -143,36 +142,46 @@ namespace CS
             else
             {
                 this->log("Connection accepted. Using new socketfd : " + std::to_string(new_sd));
+                this->log("Waiting to recieve data...");
+                
+                std::thread t(&ChatServer::DataHandler, this, new_sd);
+                t.detach();
+                
             }
             
-            this->log("Waiting to recieve data...");
-
-            ssize_t bytes_recieved;
-            char incomming_data_buffer[1000];
-            bytes_recieved = recv(new_sd, incomming_data_buffer,1000, 0);
             
-            // If no data arrives, the program will just wait here until some data arrives.
-            switch(bytes_recieved)
-            {
-                case -1:
-                    this->log("Recieve error!.");
-                    break;
-                case 0:
-                    this->log("Host shut down.");
-                    break;
-                default:
-                    incomming_data_buffer[bytes_recieved] = '\0';
-                    this->log(" bytes recieved :" + std::string(incomming_data_buffer));
-                    this->log("sending back a message...");
 
-                    char *msg = incomming_data_buffer;
-                    int len;
-                    
-                    ssize_t bytes_sent;
-                    len = strlen(msg);
-                    bytes_sent = send(new_sd, msg, len, 0);
-                    break;
-            }
+
+        }
+    }
+    
+    void ChatServer::DataHandler(int socketd)
+    {
+        ssize_t bytes_recieved;
+        char incomming_data_buffer[1000];
+        bytes_recieved = recv(socketd, incomming_data_buffer,1000, 0);
+        
+        // If no data arrives, the program will just wait here until some data arrives.
+        switch(bytes_recieved)
+        {
+            case -1:
+                this->log("Recieve error!.");
+                break;
+            case 0:
+                this->log("Host shut down.");
+                break;
+            default:
+                incomming_data_buffer[bytes_recieved] = '\0';
+                this->log(" bytes recieved :" + std::string(incomming_data_buffer));
+                this->log("sending back a message...");
+                
+                char *msg = incomming_data_buffer;
+                int len;
+                
+                ssize_t bytes_sent;
+                len = strlen(msg);
+                bytes_sent = send(socketd, msg, len, 0);
+                break;
         }
     }
 }

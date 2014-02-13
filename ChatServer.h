@@ -52,7 +52,7 @@ namespace CS
 
         bool stopServer = false;
 
-//        std::mutex lock;
+        void DataHandler(int socketd);
     };
 }
 
