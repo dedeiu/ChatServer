@@ -9,6 +9,7 @@
 #include "ChatServer.h"
 #include "ChatSettings.h"
 #include <iostream>
+#include <thread>
 
 namespace CS
 {
@@ -22,10 +23,15 @@ namespace CS
     
     ChatServer::~ChatServer()
     {
+        this->log("Stop listening thread.");
+        this->stopServer = true;
+        
         this->log("Delete host_info object.");
         delete &this->chatSettings->host_info;
+        
         this->log("Free address info list.");
         freeaddrinfo(this->chatSettings->host_info_list);
+        
         this->log("Call ChatSettings destructor.");
         this->chatSettings->~ChatSettings();
     }
@@ -37,7 +43,14 @@ namespace CS
     
     void ChatServer::Run()
     {
-        this->runServer();
+        if(this->stopServer == true)
+        {
+            this->Init();
+            this->stopServer = false;
+        }
+        
+        std::thread t(&ChatServer::runServer, this);
+        t.join();
     }
     
     void ChatServer::Init()
@@ -109,54 +122,57 @@ namespace CS
     
     void ChatServer::runServer()
     {
-        this->log("Listening for connections...");
-        this->status = listen(this->socketfd, 5);
-        
-        if(this->status == -1)
+        while(this->stopServer == false)
         {
-            this->log("Listen error.");
-        }
-        
-        struct sockaddr_storage their_addr;
-        socklen_t addr_size = sizeof(their_addr);
-        int new_sd = accept(this->socketfd, (struct sockaddr *)&their_addr, &addr_size);
-        
-        if(new_sd == -1)
-        {
-            this->log("listen error");
-        }
-        else
-        {
-            this->log("Connection accepted. Using new socketfd : " + std::to_string(new_sd));
-        }
-        
-        this->log("Waiting to recieve data...");
+            this->log("Listening for connections...");
+            this->status = listen(this->socketfd, 5);
+            
+            if(this->status == -1)
+            {
+                this->log("Listen error.");
+            }
+            
+            struct sockaddr_storage their_addr;
+            socklen_t addr_size = sizeof(their_addr);
+            int new_sd = accept(this->socketfd, (struct sockaddr *)&their_addr, &addr_size);
+            
+            if(new_sd == -1)
+            {
+                this->log("listen error");
+            }
+            else
+            {
+                this->log("Connection accepted. Using new socketfd : " + std::to_string(new_sd));
+            }
+            
+            this->log("Waiting to recieve data...");
 
-        ssize_t bytes_recieved;
-        char incomming_data_buffer[1000];
-        bytes_recieved = recv(new_sd, incomming_data_buffer,1000, 0);
-        
-        // If no data arrives, the program will just wait here until some data arrives.
-        switch(bytes_recieved)
-        {
-            case -1:
-                this->log("Recieve error!.");
-                break;
-            case 0:
-                this->log("Host shut down.");
-                break;
-            default:
-                incomming_data_buffer[bytes_recieved] = '\0';
-                this->log(" bytes recieved :" + std::string(incomming_data_buffer));
-                this->log("sending back a message...");
+            ssize_t bytes_recieved;
+            char incomming_data_buffer[1000];
+            bytes_recieved = recv(new_sd, incomming_data_buffer,1000, 0);
+            
+            // If no data arrives, the program will just wait here until some data arrives.
+            switch(bytes_recieved)
+            {
+                case -1:
+                    this->log("Recieve error!.");
+                    break;
+                case 0:
+                    this->log("Host shut down.");
+                    break;
+                default:
+                    incomming_data_buffer[bytes_recieved] = '\0';
+                    this->log(" bytes recieved :" + std::string(incomming_data_buffer));
+                    this->log("sending back a message...");
 
-                char *msg = incomming_data_buffer;
-                int len;
-                
-                ssize_t bytes_sent;
-                len = strlen(msg);
-                bytes_sent = send(new_sd, msg, len, 0);
-                break;
+                    char *msg = incomming_data_buffer;
+                    int len;
+                    
+                    ssize_t bytes_sent;
+                    len = strlen(msg);
+                    bytes_sent = send(new_sd, msg, len, 0);
+                    break;
+            }
         }
     }
 }

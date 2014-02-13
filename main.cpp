@@ -14,5 +14,6 @@ int main()
     
     ChatServer* css = new ChatServer(cs, css->logType::CSDEBUG);
     css->Run();
+    
     return 0;
 }

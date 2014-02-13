@@ -13,6 +13,7 @@
 #include <sys/socket.h>
 #include <netdb.h>
 #include <unistd.h>
+#include <thread>
 #include "ChatSettings.h"
 
 namespace CS
@@ -48,6 +49,10 @@ namespace CS
         int status = 0;
     
         void runServer();
+
+        bool stopServer = false;
+
+//        std::mutex lock;
     };
 }
 
